@@ -50,7 +50,7 @@ pub const Blo = struct {
         try self.writer.print(format, args);
     }
 
-	// count number length
+    // count number length
     fn digitLen(n: usize) usize {
         if (n < 10) return 1;
         return 1 + digitLen(n / 10);
@@ -146,7 +146,12 @@ pub const Blo = struct {
                 defer self.allocator.free(width);
                 for (width) |*char| char.* = '-';
 
-                try self.print("{s}{s}{s}\n{s}-- {s}{s} {s}-- {s}{s} {s}-- {s}{s} {s}--\n{s}{s}{s}\n", .{ space, self.getColor(.Gray), width, space, self.getColor(.Yellow), path, self.getColor(.Gray), self.getColor(.Magenta), size, self.getColor(.Gray), self.getColor(.Green), owner, self.getColor(.Gray), space, width, self.getColor(.Reset) });
+                try self.print(
+                    \\{s}{s}{s}
+                    \\{s}-- {s}{s} {s}-- {s}{s} {s}-- {s}{s} {s}--
+                    \\{s}{s}{s}
+                    \\
+                , .{ space, self.getColor(.Gray), width, space, self.getColor(.Yellow), path, self.getColor(.Gray), self.getColor(.Magenta), size, self.getColor(.Gray), self.getColor(.Green), owner, self.getColor(.Gray), space, width, self.getColor(.Reset) });
             } else {
                 const side_margin = 2;
                 const brick = "─";
