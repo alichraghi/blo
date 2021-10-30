@@ -31,11 +31,6 @@ pub const Blo = struct {
         return .{ .allocator = allocator, .out = out, .writer = out.writer(), .config = config };
     }
 
-    fn digitLen(n: usize) usize {
-        if (n < 10) return 1;
-        return 1 + digitLen(n / 10);
-    }
-
     pub fn write(self: Self, data: []const u8) !void {
         try self.writer.writeAll(data);
     }
@@ -53,6 +48,12 @@ pub const Blo = struct {
 
     fn print(self: Self, comptime format: []const u8, args: anytype) !void {
         try self.writer.print(format, args);
+    }
+
+	// count number length
+    fn digitLen(n: usize) usize {
+        if (n < 10) return 1;
+        return 1 + digitLen(n / 10);
     }
 
     // Format to human readable size like 10B, 10KB, etc
@@ -114,9 +115,11 @@ pub const Blo = struct {
     }
 
     pub fn printFile(self: Self, path: []const u8) !void {
+        // reading file
         const file = try fs.cwd().openFile(path, .{});
         const data = try file.readToEndAlloc(self.allocator, max_file_size);
 
+        // writing file information
         if (self.config.info) {
             // file stat
             // Posix Only, no Windows support :)
@@ -141,9 +144,9 @@ pub const Blo = struct {
                 const width_len = (total_stat_len + (stat_len * 3) + 5);
                 const width = try self.allocator.alloc(u8, width_len);
                 defer self.allocator.free(width);
-                for (width) |*char| char.* = '=';
+                for (width) |*char| char.* = '-';
 
-                try self.print("{s}{s}\n{s}== {s} == {s} == {s} ==\n{s}{s}\n", .{ space, width, space, path, size, owner, space, width });
+                try self.print("{s}{s}{s}\n{s}-- {s}{s} {s}-- {s}{s} {s}-- {s}{s} {s}--\n{s}{s}{s}\n", .{ space, self.getColor(.Gray), width, space, self.getColor(.Yellow), path, self.getColor(.Gray), self.getColor(.Magenta), size, self.getColor(.Gray), self.getColor(.Green), owner, self.getColor(.Gray), space, width, self.getColor(.Reset) });
             } else {
                 const side_margin = 2;
                 const brick = "─";
@@ -161,7 +164,12 @@ pub const Blo = struct {
 
                 const left_bottom_corner = if (self.config.line_number) "├" else "└";
 
-                try self.print("{s}{s}┌{s}┬{s}┬{s}┐\n{s}│{s} {s} {s}│{s} {s} {s}│{s} {s} {s}│\n{s}{s}{s}┴{s}┴{s}┘{s}\n", .{
+                try self.print(
+                    \\{s}{s}┌{s}┬{s}┬{s}┐
+                    \\{s}│{s} {s} {s}│{s} {s} {s}│{s} {s} {s}│
+                    \\{s}{s}{s}┴{s}┴{s}┘{s}
+                    \\
+                , .{
                     space,
                     self.getColor(.Gray),
                     path_width,
@@ -187,6 +195,7 @@ pub const Blo = struct {
             }
         }
 
+        // check for line numbers
         if (self.config.line_number) {
             var lines = mem.split(u8, data, "\n");
             var line_num: usize = 1;
@@ -202,6 +211,7 @@ pub const Blo = struct {
             try self.writer.writeAll(data);
         }
 
+        // show file end with <end>
         if (self.config.show_end) {
             try self.writer.writeAll("<end>");
         }

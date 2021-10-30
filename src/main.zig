@@ -69,8 +69,7 @@ pub fn main() !void {
 
     for (files.items) |file, index| {
         blo.printFile(file) catch |err| {
-            if (err == error.FileTooBig) log.err("{s} is too big", .{file});
-            return err;
+            log.err("{s}", .{@errorName(err)});
         };
         if (index < files.items.len - 1) {
             try blo.write("\n\n");
