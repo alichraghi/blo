@@ -72,7 +72,7 @@ pub fn main() !void {
             var buf: [1024]u8 = undefined;
             if (try stdin.reader().readUntilDelimiterOrEof(&buf, '\n')) |line| {
                 try stdout.writer().print("{s}\n", .{line});
-            }
+            } else break;
         }
     } else {
         const blo = Blo.init(allocator, io.getStdOut(), config);
