@@ -65,14 +65,25 @@ pub fn main() !void {
         }
     }
 
-    const blo = Blo.init(allocator, io.getStdOut(), config);
+    const stdout = io.getStdOut();
+    const stdin = io.getStdIn();
+    if (files.items.len == 0) {
+        while (true) {
+            var buf: [1024]u8 = undefined;
+            if (try stdin.reader().readUntilDelimiterOrEof(&buf, '\n')) |line| {
+                try stdout.writer().print("{s}\n", .{line});
+            }
+        }
+    } else {
+        const blo = Blo.init(allocator, io.getStdOut(), config);
 
-    for (files.items) |file, index| {
-        blo.printFile(file) catch |err| {
-            log.err("{s}", .{@errorName(err)});
-        };
-        if (index < files.items.len - 1) {
-            try blo.write("\n\n");
+        for (files.items) |file, index| {
+            blo.printFile(file) catch |err| {
+                log.err("{s}", .{@errorName(err)});
+            };
+            if (index < files.items.len - 1) {
+                try blo.write("\n\n");
+            }
         }
     }
 }
