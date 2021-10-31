@@ -19,7 +19,7 @@ const help_output =
     \\-h, --help            display this help and exit
     \\
     \\Examples:
-    \\blo README.md         prints the README.md content
+    \\blo test.txt          prints the test.txt content
     \\blo                   copy standard input to output
 ;
 
