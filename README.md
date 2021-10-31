@@ -1,2 +1,2 @@
 # blo
- a human readable data &amp; file format
+ [test.png](/assets/example.png)
