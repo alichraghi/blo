@@ -1,2 +1,2 @@
 # blo
- [test.png](/raw/main/assets/example.png)
+ ![test.png](/assets/example.png)
