@@ -2,7 +2,7 @@
 ![test.png](/assets/example.png)
 
 ## TODO
-- [ ] Mime Information
+- [X] ~~Mime Information~~ (useless)
 - [ ] Modification Date (waiting for std lib)
 
 ## Help Output
