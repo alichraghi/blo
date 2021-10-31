@@ -1,6 +1,11 @@
 # Blo
 ![test.png](/assets/example.png)
 
+## TODO
+- [ ] Mime Information
+- [ ] Modification Date (waiting for std lib)
+
+## Help Output
 ```
 info: Usage: blo [OPTION]... [FILE]...
 With no FILE, read standard input.
