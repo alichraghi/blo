@@ -1,7 +1,6 @@
 # Blo
 ![test.png](/assets/example.png)
 
-example:
 ```
 info: Usage: blo [OPTION]... [FILE]...
 With no FILE, read standard input.
