@@ -5,6 +5,7 @@ const mem = std.mem;
 const fs = std.fs;
 const io = std.io;
 const log = std.log;
+
 const help_output =
     \\Usage: blo [OPTION]... [FILE]...
     \\With no FILE, read standard input.
@@ -57,8 +58,10 @@ pub fn main() !void {
                 config.info = true;
             } else if (mem.eql(u8, arg, "-h") or mem.eql(u8, arg, "--help")) {
                 log.info(help_output, .{});
+                return;
             } else {
                 log.err("unkown option {s}", .{arg});
+                return;
             }
         } else {
             try files.append(arg);
@@ -67,6 +70,7 @@ pub fn main() !void {
 
     const stdout = io.getStdOut();
     const stdin = io.getStdIn();
+
     if (files.items.len == 0) {
         while (true) {
             var buf: [1024]u8 = undefined;
@@ -80,6 +84,7 @@ pub fn main() !void {
         for (files.items) |file, index| {
             blo.printFile(file) catch |err| {
                 log.err("{s}", .{@errorName(err)});
+                return;
             };
             if (index < files.items.len - 1) {
                 try blo.write("\n\n");

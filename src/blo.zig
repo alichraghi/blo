@@ -68,7 +68,7 @@ pub const Blo = struct {
         return std.fmt.allocPrint(self.allocator, "{d} {s}", .{ size, suffix[i] }) catch "Unkown";
     }
 
-    // TODO: this function is unsafe (out of bound index)
+    // TODO: unsafe (out of bound index)
     fn fillSlice(slice: []u8, value: []const u8) void {
         var i: usize = 0;
         while (i < slice.len) : (i += value.len) {
@@ -90,7 +90,7 @@ pub const Blo = struct {
     }
 
     fn getColor(self: Self, color: Color) []const u8 {
-        return if (self.config.colors)
+        return if (self.config.colors and self.out.supportsAnsiEscapeCodes())
             switch (color) {
                 .Reset => "\x1b[0m",
                 .Black => "\x1b[30m",
@@ -118,7 +118,6 @@ pub const Blo = struct {
         // reading file
         const file = try fs.cwd().openFile(path, .{});
         const data = try file.readToEndAlloc(self.allocator, max_file_size);
-
         // writing file information
         if (self.config.info) {
             // file stat
