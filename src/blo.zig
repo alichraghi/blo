@@ -1,7 +1,4 @@
 const std = @import("std");
-const c = @cImport({
-    @cInclude("pwd.h");
-});
 const mem = std.mem;
 const io = std.io;
 const math = std.math;
@@ -28,7 +25,14 @@ pub const Blo = struct {
     config: Config,
 
     pub fn init(allocator: *mem.Allocator, out: fs.File, config: Config) Self {
-        return .{ .allocator = allocator, .out = out, .writer = out.writer(), .config = config };
+        var modif_config = config;
+
+        if (!out.supportsAnsiEscapeCodes()) {
+            modif_config.ascii_chars = true;
+            modif_config.colors = false;
+        }
+
+        return .{ .allocator = allocator, .out = out, .writer = out.writer(), .config = modif_config};
     }
 
     pub fn write(self: Self, data: []const u8) !void {
@@ -90,7 +94,7 @@ pub const Blo = struct {
     }
 
     fn getColor(self: Self, color: Color) []const u8 {
-        return if (self.config.colors and self.out.supportsAnsiEscapeCodes())
+        return if (self.config.colors)
             switch (color) {
                 .Reset => "\x1b[0m",
                 .Black => "\x1b[30m",
@@ -118,24 +122,19 @@ pub const Blo = struct {
         // reading file
         const file = try fs.cwd().openFile(path, .{});
         const data = try file.readToEndAlloc(self.allocator, max_file_size);
+
         // writing file information
         if (self.config.info) {
             // file stat
             // Posix Only, no Windows support :)
-            const stat = try std.os.fstat(file.handle);
+            const stat = try file.stat();
 
             // file size
             const size = try self.fmtSize(@intCast(usize, stat.size));
 
-            // file owner name
-            const passwd = extern struct { pw_name: [*:0]u8 };
-            const owner: []const u8 = mem.sliceTo(@ptrCast(*passwd, c.getpwuid(stat.uid) orelse {
-                return error.InvalidUID;
-            }).pw_name, 0);
-
             // file info
-            const stat_len = 3; // path - size - owner
-            const total_stat_len = path.len + size.len + owner.len;
+            const stat_len = 2; // path - size - owner
+            const total_stat_len = path.len + size.len;
             const space = if (self.config.line_number) " " ** 5 else "";
 
             // printing
@@ -147,38 +146,34 @@ pub const Blo = struct {
 
                 try self.print(
                     \\{s}{s}{s}
-                    \\{s}-- {s}{s} {s}-- {s}{s} {s}-- {s}{s} {s}--
+                    \\{s}-- {s}{s} {s}-- {s}{s} {s}--
                     \\{s}{s}{s}
                     \\
-                , .{ space, self.getColor(.Gray), width, space, self.getColor(.Yellow), path, self.getColor(.Gray), self.getColor(.Magenta), size, self.getColor(.Gray), self.getColor(.Green), owner, self.getColor(.Gray), space, width, self.getColor(.Reset) });
+                , .{ space, self.getColor(.Gray), width, space, self.getColor(.Yellow), path, self.getColor(.Gray), self.getColor(.Magenta), size, self.getColor(.Gray), space, width, self.getColor(.Reset) });
             } else {
                 const side_margin = 2;
                 const brick = "─";
                 var path_width = try self.allocator.alloc(u8, (path.len + side_margin) * brick.len);
                 var size_width = try self.allocator.alloc(u8, (size.len + side_margin) * brick.len);
-                var owner_width = try self.allocator.alloc(u8, (owner.len + side_margin) * brick.len);
                 fillSlice(path_width, brick);
                 fillSlice(size_width, brick);
-                fillSlice(owner_width, brick);
                 defer {
                     self.allocator.free(path_width);
                     self.allocator.free(size_width);
-                    self.allocator.free(owner_width);
                 }
 
                 const left_bottom_corner = if (self.config.line_number) "├" else "└";
 
                 try self.print(
-                    \\{s}{s}┌{s}┬{s}┬{s}┐
-                    \\{s}│{s} {s} {s}│{s} {s} {s}│{s} {s} {s}│
-                    \\{s}{s}{s}┴{s}┴{s}┘{s}
+                    \\{s}{s}┌{s}┬{s}┐
+                    \\{s}│{s} {s} {s}│{s} {s} {s}│
+                    \\{s}{s}{s}┴{s}┘{s}
                     \\
                 , .{
                     space,
                     self.getColor(.Gray),
                     path_width,
                     size_width,
-                    owner_width,
                     space,
                     self.getColor(.Yellow),
                     path,
@@ -186,14 +181,10 @@ pub const Blo = struct {
                     self.getColor(.Magenta),
                     size,
                     self.getColor(.Gray),
-                    self.getColor(.Green),
-                    owner,
-                    self.getColor(.Gray),
                     space,
                     left_bottom_corner,
                     path_width,
                     size_width,
-                    owner_width,
                     self.getColor(.Reset),
                 });
             }
