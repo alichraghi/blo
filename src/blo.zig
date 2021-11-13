@@ -32,7 +32,7 @@ pub const Blo = struct {
             modif_config.colors = false;
         }
 
-        return .{ .allocator = allocator, .out = out, .writer = out.writer(), .config = modif_config};
+        return .{ .allocator = allocator, .out = out, .writer = out.writer(), .config = modif_config };
     }
 
     pub fn write(self: Self, data: []const u8) !void {
@@ -82,13 +82,17 @@ pub const Blo = struct {
 
     const Color = enum { Reset, Black, Red, Green, Yellow, Blue, Magenta, Cyan, White, Gray, BrightRed, BrightGreen, BrightYellow, BrightBlue, BrightMagenta, BrightCyan, BrightWhite };
 
-    fn setColor(self: Self, value: []const u8, color: Color) ![]const u8 {
+    fn setColor(self: Self, value: []const u8, color: Color, out: ?Color) ![]const u8 {
         if (self.config.colors) {
             var res = std.ArrayList(u8).init(self.allocator);
             defer res.deinit();
             try res.appendSlice(self.getColor(color));
             try res.appendSlice(value);
-            try res.appendSlice(self.getColor(.Reset));
+            if (out) |out_color| {
+                try res.appendSlice(self.getColor(out_color));
+            } else {
+                try res.appendSlice(self.getColor(.Reset));
+            }
             return res.toOwnedSlice();
         } else return value;
     }
@@ -146,10 +150,10 @@ pub const Blo = struct {
 
                 try self.print(
                     \\{s}{s}{s}
-                    \\{s}-- {s}{s} {s}-- {s}{s} {s}--
+                    \\{s}-- {s} -- {s} --
                     \\{s}{s}{s}
                     \\
-                , .{ space, self.getColor(.Gray), width, space, self.getColor(.Yellow), path, self.getColor(.Gray), self.getColor(.Magenta), size, self.getColor(.Gray), space, width, self.getColor(.Reset) });
+                , .{ space, self.getColor(.Gray), width, space, self.setColor(path, .Yellow, .Gray), self.setColor(size, .Magenta, .Gray), space, width, self.getColor(.Reset) });
             } else {
                 const side_margin = 2;
                 const brick = "─";
@@ -166,7 +170,7 @@ pub const Blo = struct {
 
                 try self.print(
                     \\{s}{s}┌{s}┬{s}┐
-                    \\{s}│{s} {s} {s}│{s} {s} {s}│
+                    \\{s}│ {s} │ {s} │
                     \\{s}{s}{s}┴{s}┘{s}
                     \\
                 , .{
@@ -175,12 +179,8 @@ pub const Blo = struct {
                     path_width,
                     size_width,
                     space,
-                    self.getColor(.Yellow),
-                    path,
-                    self.getColor(.Gray),
-                    self.getColor(.Magenta),
-                    size,
-                    self.getColor(.Gray),
+                    self.setColor(path, .Yellow, .Gray),
+                    self.setColor(size, .Magenta, .Gray),
                     space,
                     left_bottom_corner,
                     path_width,
@@ -198,7 +198,7 @@ pub const Blo = struct {
                 const lnl = digitLen(line_num); // line number length
                 try self.writer.writeByteNTimes(' ', 4 - lnl);
                 const line_split_char = if (self.config.ascii_chars) "|" else "│";
-                try self.writer.print("{s}{d}{s} {s} ", .{ self.getColor(.Cyan), line_num, self.getColor(.Reset), self.setColor(line_split_char, .Gray) });
+                try self.writer.print("{s}{d}{s} {s} ", .{ self.getColor(.Cyan), line_num, self.getColor(.Reset), self.setColor(line_split_char, .Gray, null) });
                 try self.writer.writeAll(line);
                 if (lines.index != null) try self.writer.writeByte('\n');
             }
