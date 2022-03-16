@@ -1,9 +1,15 @@
 # Blo
 ![test.png](/assets/example.png)
 
+## Installation
+zigmod:
+```
+zigmod aq install 1/alichraghi/blo
+```
+
 ## TODO
-- [X] ~~Mime Information~~ (useless)
-- [ ] Modification Date (waiting for std lib)
+- [ ] Modification Date
+- [ ] Syntax Highlighting
 
 ## Help Output
 ```
