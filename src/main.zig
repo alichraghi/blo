@@ -25,7 +25,7 @@ const help_output =
 
 pub fn main() !void {
     var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
-    const allocator = &arena.allocator;
+    const allocator = arena.allocator();
     const args = try process.argsAlloc(allocator);
     var files = std.ArrayList([]u8).init(allocator);
     defer {

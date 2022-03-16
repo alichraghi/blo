@@ -19,12 +19,12 @@ pub const Blo = struct {
     };
     // zig fmt: on
 
-    allocator: *mem.Allocator,
+    allocator: mem.Allocator,
     out: fs.File,
     writer: fs.File.Writer,
     config: Config,
 
-    pub fn init(allocator: *mem.Allocator, out: fs.File, config: Config) Self {
+    pub fn init(allocator: mem.Allocator, out: fs.File, config: Config) Self {
         var modif_config = config;
 
         if (!out.supportsAnsiEscapeCodes()) {
