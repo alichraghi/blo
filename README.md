@@ -12,8 +12,18 @@ zigmod aq install 1/alichraghi/blo
 
 ## TODO
 
-- [ ] Modification Date
-- [ ] Syntax Highlighting
+- [ ] Modification date
+- [ ] File type detection
+- [ ] Syntax highlighting
+  - [x] Json
+  - [ ] TOML
+  - [ ] Markdown
+  - [ ] Zig
+  - [ ] Yaml
+  - [ ] C
+  - [ ] Rust
+  - [ ] Javascript
+  - [ ] **PR or Issue**
 
 ## Help Output
 
