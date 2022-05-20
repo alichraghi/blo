@@ -36,6 +36,7 @@ pub fn main() !void {
 
     // zig fmt: off
     var config = Blo.Config{
+        .highlight = true,
         .ascii_chars = false,
         .colors = true,
         .show_end = false,

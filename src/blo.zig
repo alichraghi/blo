@@ -1,23 +1,65 @@
 const std = @import("std");
+const syntax = @import("syntax.zig");
 const mem = std.mem;
 const io = std.io;
 const math = std.math;
 const fs = std.fs;
 const os = std.os;
 
+pub const Color = enum {
+    Reset,
+    Black,
+    Red,
+    Green,
+    Yellow,
+    Blue,
+    Magenta,
+    Cyan,
+    White,
+    Gray,
+    BrightRed,
+    BrightGreen,
+    BrightYellow,
+    BrightBlue,
+    BrightMagenta,
+    BrightCyan,
+    BrightWhite,
+
+    pub fn getColor(self: Color) []const u8 {
+        return switch (self) {
+            .Reset => "\x1b[0m",
+            .Black => "\x1b[30m",
+            .Red => "\x1b[31m",
+            .Green => "\x1b[32m",
+            .Yellow => "\x1b[33m",
+            .Blue => "\x1b[34m",
+            .Magenta => "\x1b[35m",
+            .Cyan => "\x1b[36m",
+            .White => "\x1b[37m",
+            .Gray => "\x1b[90m",
+            .BrightRed => "\x1b[91m",
+            .BrightGreen => "\x1b[92m",
+            .BrightYellow => "\x1b[93m",
+            .BrightBlue => "\x1b[94m",
+            .BrightMagenta => "\x1b[95m",
+            .BrightCyan => "\x1b[96m",
+            .BrightWhite => "\x1b[97m",
+        };
+    }
+};
+
 pub const Blo = struct {
     const Self = Blo;
     const max_file_size = 1024 * 1024 * 10;
 
-    // zig fmt: off
     pub const Config = struct {
+        highlight: bool,
         ascii_chars: bool,
         info: bool,
         colors: bool,
         show_end: bool,
-        line_number: bool
+        line_number: bool,
     };
-    // zig fmt: on
 
     allocator: mem.Allocator,
     out: fs.File,
@@ -72,54 +114,26 @@ pub const Blo = struct {
         return std.fmt.allocPrint(self.allocator, "{d} {s}", .{ size, suffix[i] }) catch "Unkown";
     }
 
-    // TODO: unsafe (out of bound index)
     fn fillSlice(slice: []u8, value: []const u8) void {
         var i: usize = 0;
         while (i < slice.len) : (i += value.len) {
-            mem.copy(u8, slice[i..][0..value.len], value);
+            mem.copy(u8, slice[i .. i + value.len], value);
         }
     }
-
-    const Color = enum { Reset, Black, Red, Green, Yellow, Blue, Magenta, Cyan, White, Gray, BrightRed, BrightGreen, BrightYellow, BrightBlue, BrightMagenta, BrightCyan, BrightWhite };
 
     fn setColor(self: Self, value: []const u8, color: Color, out: ?Color) ![]const u8 {
         if (self.config.colors) {
             var res = std.ArrayList(u8).init(self.allocator);
             defer res.deinit();
-            try res.appendSlice(self.getColor(color));
+            try res.appendSlice(Color.getColor(color));
             try res.appendSlice(value);
             if (out) |out_color| {
-                try res.appendSlice(self.getColor(out_color));
+                try res.appendSlice(Color.getColor(out_color));
             } else {
-                try res.appendSlice(self.getColor(.Reset));
+                try res.appendSlice(Color.getColor(.Reset));
             }
             return res.toOwnedSlice();
         } else return value;
-    }
-
-    fn getColor(self: Self, color: Color) []const u8 {
-        return if (self.config.colors)
-            switch (color) {
-                .Reset => "\x1b[0m",
-                .Black => "\x1b[30m",
-                .Red => "\x1b[31m",
-                .Green => "\x1b[32m",
-                .Yellow => "\x1b[33m",
-                .Blue => "\x1b[34m",
-                .Magenta => "\x1b[35m",
-                .Cyan => "\x1b[36m",
-                .White => "\x1b[37m",
-                .Gray => "\x1b[90m",
-                .BrightRed => "\x1b[91m",
-                .BrightGreen => "\x1b[92m",
-                .BrightYellow => "\x1b[93m",
-                .BrightBlue => "\x1b[94m",
-                .BrightMagenta => "\x1b[95m",
-                .BrightCyan => "\x1b[96m",
-                .BrightWhite => "\x1b[97m",
-            }
-        else
-            &[_]u8{};
     }
 
     pub fn printFile(self: Self, path: []const u8) !void {
@@ -130,7 +144,6 @@ pub const Blo = struct {
         // writing file information
         if (self.config.info) {
             // file stat
-            // Posix Only, no Windows support :)
             const stat = try file.stat();
 
             // file size
@@ -153,7 +166,7 @@ pub const Blo = struct {
                     \\{s}-- {s} -- {s} --
                     \\{s}{s}{s}
                     \\
-                , .{ space, self.getColor(.Gray), width, space, self.setColor(path, .Yellow, .Gray), self.setColor(size, .Magenta, .Gray), space, width, self.getColor(.Reset) });
+                , .{ space, Color.getColor(.Gray), width, space, self.setColor(path, .Yellow, .Gray), self.setColor(size, .Magenta, .Gray), space, width, Color.getColor(.Reset) });
             } else {
                 const side_margin = 2;
                 const brick = "─";
@@ -175,7 +188,7 @@ pub const Blo = struct {
                     \\
                 , .{
                     space,
-                    self.getColor(.Gray),
+                    Color.getColor(.Gray),
                     path_width,
                     size_width,
                     space,
@@ -185,25 +198,56 @@ pub const Blo = struct {
                     left_bottom_corner,
                     path_width,
                     size_width,
-                    self.getColor(.Reset),
+                    Color.getColor(.Reset),
                 });
             }
         }
 
         // check for line numbers
         if (self.config.line_number) {
-            var lines = mem.split(u8, data, "\n");
             var line_num: usize = 1;
-            while (lines.next()) |line| : (line_num += 1) {
-                const lnl = digitLen(line_num); // line number length
-                try self.writer.writeByteNTimes(' ', 4 - lnl);
+            if (self.config.highlight) {
+                var syntax_iterator = syntax.SyntaxIterator.init(.json, null, data);
                 const line_split_char = if (self.config.ascii_chars) "|" else "│";
-                try self.writer.print("{s}{d}{s} {s} ", .{ self.getColor(.Cyan), line_num, self.getColor(.Reset), self.setColor(line_split_char, .Gray, null) });
-                try self.writer.writeAll(line);
-                if (lines.index != null) try self.writer.writeByte('\n');
+                var i: usize = 0;
+                while (syntax_iterator.next()) |token| : (i += 1) {
+                    const lnl = digitLen(line_num); // line number length
+                    if (i == 0) {
+                        try self.writer.writeByteNTimes(' ', 4 - lnl);
+                        try self.writer.print("{s}{d}{s} {s} ", .{ Color.getColor(.Cyan), line_num, Color.getColor(.Reset), self.setColor(line_split_char, .Gray, null) });
+                        try self.writer.writeAll(token.color.getColor());
+                        try self.writer.writeAll(data[token.start..token.end]);
+                    } else if (data[token.start..token.end][0] == '\n') {
+                        line_num += 1;
+                        try self.writer.writeByte('\n');
+                        try self.writer.writeByteNTimes(' ', 4 - lnl);
+                        try self.writer.print("{s}{d}{s} {s} ", .{ Color.getColor(.Cyan), line_num, Color.getColor(.Reset), self.setColor(line_split_char, .Gray, null) });
+                    } else {
+                        try self.writer.writeAll(token.color.getColor());
+                        try self.writer.writeAll(data[token.start..token.end]);
+                    }
+                }
+            } else {
+                var lines = mem.split(u8, data, "\n");
+                const line_split_char = if (self.config.ascii_chars) "|" else "│";
+                while (lines.next()) |line| : (line_num += 1) {
+                    const lnl = digitLen(line_num); // line number length
+                    try self.writer.writeByteNTimes(' ', 4 - lnl);
+                    try self.writer.print("{s}{d}{s} {s} ", .{ Color.getColor(.Cyan), line_num, Color.getColor(.Reset), self.setColor(line_split_char, .Gray, null) });
+                    try self.writer.writeAll(line);
+                    if (lines.index != null) try self.writer.writeByte('\n');
+                }
             }
         } else {
-            try self.writer.writeAll(data);
+            if (self.config.highlight) {
+                var syntax_iterator = syntax.SyntaxIterator.init(.json, null, data);
+                while (syntax_iterator.next()) |token| {
+                    try self.writer.writeAll(token.color.getColor());
+                    try self.writer.writeAll(data[token.start..token.end]);
+                }
+            } else {
+                try self.writer.writeAll(data);
+            }
         }
 
         // show file end with <end>
