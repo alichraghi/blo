@@ -1,17 +1,22 @@
 # Blo
-![test.png](/assets/example.png)
+
+![](/assets/screenshot.png)
 
 ## Installation
+
 zigmod:
+
 ```
 zigmod aq install 1/alichraghi/blo
 ```
 
 ## TODO
+
 - [ ] Modification Date
 - [ ] Syntax Highlighting
 
 ## Help Output
+
 ```
 info: Usage: blo [OPTION]... [FILE]...
 With no FILE, read standard input.
