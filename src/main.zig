@@ -3,8 +3,12 @@ const Blo = @import("blo.zig").Blo;
 const process = std.process;
 const mem = std.mem;
 const fs = std.fs;
-const io = std.io;
-const log = std.log;
+const stdout = std.io.getStdOut();
+const stdin = std.io.getStdIn();
+
+pub const Error = error{
+    UnkownOption,
+};
 
 const help_output =
     \\Usage: blo [OPTION]... [FILE]...
@@ -29,21 +33,19 @@ pub fn main() !void {
     const args = try process.argsAlloc(allocator);
     var files = std.ArrayList([]u8).init(allocator);
     defer {
-        files.deinit();
         process.argsFree(allocator, args);
+        files.deinit();
         arena.deinit();
     }
 
-    // zig fmt: off
     var config = Blo.Config{
         .highlight = true,
         .ascii_chars = false,
         .colors = true,
         .show_end = false,
         .line_number = false,
-        .info = false
+        .info = false,
     };
-    // zig fmt: on
 
     for (args[1..]) |arg| {
         if (arg.len > 1 and arg[0] == '-') {
@@ -58,19 +60,15 @@ pub fn main() !void {
             } else if (mem.eql(u8, arg, "-i") or mem.eql(u8, arg, "--info")) {
                 config.info = true;
             } else if (mem.eql(u8, arg, "-h") or mem.eql(u8, arg, "--help")) {
-                log.info(help_output, .{});
+                try stdout.writeAll(help_output);
                 return;
             } else {
-                log.err("unkown option {s}", .{arg});
-                return;
+                return Error.UnkownOption;
             }
         } else {
             try files.append(arg);
         }
     }
-
-    const stdout = io.getStdOut();
-    const stdin = io.getStdIn();
 
     if (files.items.len == 0) {
         while (true) {
@@ -80,13 +78,10 @@ pub fn main() !void {
             } else break;
         }
     } else {
-        const blo = Blo.init(allocator, io.getStdOut(), config);
+        const blo = Blo.init(allocator, stdout, config);
 
         for (files.items) |file, index| {
-            blo.printFile(file) catch |err| {
-                log.err("{s}", .{@errorName(err)});
-                return;
-            };
+            try blo.printFile(file);
             if (index < files.items.len - 1) {
                 try blo.write("\n\n");
             }

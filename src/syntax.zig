@@ -1,8 +1,8 @@
 const std = @import("std");
-const blo = @import("blo.zig");
+const Color = @import("term.zig").Color;
 
 pub const Token = struct {
-    color: blo.Color,
+    color: Color,
     start: usize,
     end: usize,
 };
@@ -12,15 +12,15 @@ pub const Language = enum {
 };
 
 pub const Theme = struct {
-    string: blo.Color,
-    keyword: blo.Color,
-    number: blo.Color,
-    operator: blo.Color,
-    bracket: blo.Color,
-    comment: blo.Color,
-    variable: blo.Color,
-    declaration: blo.Color,
-    meaning: blo.Color,
+    string: Color,
+    keyword: Color,
+    number: Color,
+    operator: Color,
+    bracket: Color,
+    comment: Color,
+    variable: Color,
+    declaration: Color,
+    meaning: Color,
 };
 
 pub const SyntaxIterator = struct {
@@ -64,7 +64,6 @@ pub const SyntaxIterator = struct {
             string_literal_backslash,
             number,
             hexadecimal,
-            zero,
             slash,
             comment_start,
             comment_end,
@@ -108,11 +107,7 @@ pub const SyntaxIterator = struct {
                         self.index += 1;
                         break;
                     },
-                    '0' => {
-                        self.token.color = .Cyan;
-                        state = .zero;
-                    },
-                    '1'...'9' => {
+                    '0'...'9' => {
                         self.token.color = .Cyan;
                         state = .number;
                     },
@@ -146,14 +141,6 @@ pub const SyntaxIterator = struct {
                     else => {},
                 },
                 .string_literal_backslash => state = .string_literal,
-                .zero => switch (self.c()) {
-                    'x' => {
-                        state = .hexadecimal;
-                    },
-                    else => {
-                        break;
-                    },
-                },
                 .number => switch (self.c()) {
                     '0'...'9' => {},
                     else => {

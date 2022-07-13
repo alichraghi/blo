@@ -1,6 +1,6 @@
 {
-    "hello": 'bye',
-    "num": 12,
-    "arr": [1, -2, 0xFF00, 4],
+    "hello": 'world',
+    "x": "y",
+    "arr": [1, -2, 4],
     /* this is a *comment* */
 }

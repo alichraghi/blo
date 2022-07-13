@@ -1,52 +1,8 @@
 const std = @import("std");
 const syntax = @import("syntax.zig");
+const Color = @import("term.zig").Color;
 const mem = std.mem;
-const io = std.io;
-const math = std.math;
 const fs = std.fs;
-const os = std.os;
-
-pub const Color = enum {
-    Reset,
-    Black,
-    Red,
-    Green,
-    Yellow,
-    Blue,
-    Magenta,
-    Cyan,
-    White,
-    Gray,
-    BrightRed,
-    BrightGreen,
-    BrightYellow,
-    BrightBlue,
-    BrightMagenta,
-    BrightCyan,
-    BrightWhite,
-
-    pub fn getColor(self: Color) []const u8 {
-        return switch (self) {
-            .Reset => "\x1b[0m",
-            .Black => "\x1b[30m",
-            .Red => "\x1b[31m",
-            .Green => "\x1b[32m",
-            .Yellow => "\x1b[33m",
-            .Blue => "\x1b[34m",
-            .Magenta => "\x1b[35m",
-            .Cyan => "\x1b[36m",
-            .White => "\x1b[37m",
-            .Gray => "\x1b[90m",
-            .BrightRed => "\x1b[91m",
-            .BrightGreen => "\x1b[92m",
-            .BrightYellow => "\x1b[93m",
-            .BrightBlue => "\x1b[94m",
-            .BrightMagenta => "\x1b[95m",
-            .BrightCyan => "\x1b[96m",
-            .BrightWhite => "\x1b[97m",
-        };
-    }
-};
 
 pub const Blo = struct {
     const Self = Blo;
@@ -125,12 +81,12 @@ pub const Blo = struct {
         if (self.config.colors) {
             var res = std.ArrayList(u8).init(self.allocator);
             defer res.deinit();
-            try res.appendSlice(Color.getColor(color));
+            try res.appendSlice(color.toCode());
             try res.appendSlice(value);
             if (out) |out_color| {
-                try res.appendSlice(Color.getColor(out_color));
+                try res.appendSlice(out_color.toCode());
             } else {
-                try res.appendSlice(Color.getColor(.Reset));
+                try res.appendSlice(Color.Reset.toCode());
             }
             return res.toOwnedSlice();
         } else return value;
@@ -166,7 +122,7 @@ pub const Blo = struct {
                     \\{s}-- {s} -- {s} --
                     \\{s}{s}{s}
                     \\
-                , .{ space, Color.getColor(.Gray), width, space, self.setColor(path, .Yellow, .Gray), self.setColor(size, .Magenta, .Gray), space, width, Color.getColor(.Reset) });
+                , .{ space, Color.Gray.toCode(), width, space, self.setColor(path, .Yellow, .Gray), self.setColor(size, .Magenta, .Gray), space, width, Color.Reset.toCode() });
             } else {
                 const side_margin = 2;
                 const brick = "─";
@@ -188,7 +144,7 @@ pub const Blo = struct {
                     \\
                 , .{
                     space,
-                    Color.getColor(.Gray),
+                    Color.Gray.toCode(),
                     path_width,
                     size_width,
                     space,
@@ -198,7 +154,7 @@ pub const Blo = struct {
                     left_bottom_corner,
                     path_width,
                     size_width,
-                    Color.getColor(.Reset),
+                    Color.Reset.toCode(),
                 });
             }
         }
@@ -214,16 +170,16 @@ pub const Blo = struct {
                     const lnl = digitLen(line_num); // line number length
                     if (i == 0) {
                         try self.writer.writeByteNTimes(' ', 4 - lnl);
-                        try self.writer.print("{s}{d}{s} {s} ", .{ Color.getColor(.Cyan), line_num, Color.getColor(.Reset), self.setColor(line_split_char, .Gray, null) });
-                        try self.writer.writeAll(token.color.getColor());
+                        try self.writer.print("{s}{d}{s} {s} ", .{ Color.Cyan.toCode(), line_num, Color.Reset.toCode(), self.setColor(line_split_char, .Gray, null) });
+                        try self.writer.writeAll(token.color.toCode());
                         try self.writer.writeAll(data[token.start..token.end]);
                     } else if (data[token.start..token.end][0] == '\n') {
                         line_num += 1;
                         try self.writer.writeByte('\n');
                         try self.writer.writeByteNTimes(' ', 4 - lnl);
-                        try self.writer.print("{s}{d}{s} {s} ", .{ Color.getColor(.Cyan), line_num, Color.getColor(.Reset), self.setColor(line_split_char, .Gray, null) });
+                        try self.writer.print("{s}{d}{s} {s} ", .{ Color.Cyan.toCode(), line_num, Color.Reset.toCode(), self.setColor(line_split_char, .Gray, null) });
                     } else {
-                        try self.writer.writeAll(token.color.getColor());
+                        try self.writer.writeAll(token.color.toCode());
                         try self.writer.writeAll(data[token.start..token.end]);
                     }
                 }
@@ -233,7 +189,7 @@ pub const Blo = struct {
                 while (lines.next()) |line| : (line_num += 1) {
                     const lnl = digitLen(line_num); // line number length
                     try self.writer.writeByteNTimes(' ', 4 - lnl);
-                    try self.writer.print("{s}{d}{s} {s} ", .{ Color.getColor(.Cyan), line_num, Color.getColor(.Reset), self.setColor(line_split_char, .Gray, null) });
+                    try self.writer.print("{s}{d}{s} {s} ", .{ Color.Cyan.toCode(), line_num, Color.Reset.toCode(), self.setColor(line_split_char, .Gray, null) });
                     try self.writer.writeAll(line);
                     if (lines.index != null) try self.writer.writeByte('\n');
                 }
@@ -242,7 +198,7 @@ pub const Blo = struct {
             if (self.config.highlight) {
                 var syntax_iterator = syntax.SyntaxIterator.init(.json, null, data);
                 while (syntax_iterator.next()) |token| {
-                    try self.writer.writeAll(token.color.getColor());
+                    try self.writer.writeAll(token.color.toCode());
                     try self.writer.writeAll(data[token.start..token.end]);
                 }
             } else {
