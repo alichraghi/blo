@@ -25,15 +25,15 @@ pub const Theme = struct {
 
 pub const SyntaxIterator = struct {
     const default_theme = Theme{
-        .string = .Yellow,
-        .keyword = .Red,
-        .number = .BrightBlue,
-        .operator = .BrightRed,
-        .bracket = .BrightMagenta,
-        .comment = .Gray,
-        .variable = .White,
-        .declaration = .BrightGreen,
-        .meaning = .Gray,
+        .string = .yellow,
+        .keyword = .red,
+        .number = .bright_blue,
+        .operator = .bright_red,
+        .bracket = .bright_magenta,
+        .comment = .gray,
+        .variable = .white,
+        .declaration = .bright_green,
+        .meaning = .gray,
     };
 
     lang: Language,
@@ -81,20 +81,20 @@ pub const SyntaxIterator = struct {
                         break;
                     },
                     '"' => {
-                        self.token.color = .Yellow;
+                        self.token.color = .yellow;
                         state = .string_double_literal;
                     },
                     '\'' => {
-                        self.token.color = .Yellow;
+                        self.token.color = .yellow;
                         state = .string_literal;
                     },
                     '{', '}', '[', ']' => {
-                        self.token.color = .Magenta;
+                        self.token.color = .magenta;
                         self.index += 1;
                         break;
                     },
                     '-' => {
-                        self.token.color = .BrightRed;
+                        self.token.color = .bright_red;
                         self.index += 1;
                         break;
                     },
@@ -103,12 +103,12 @@ pub const SyntaxIterator = struct {
                         state = .slash;
                     },
                     ',', ':' => {
-                        self.token.color = .Gray;
+                        self.token.color = .gray;
                         self.index += 1;
                         break;
                     },
                     '0'...'9' => {
-                        self.token.color = .Cyan;
+                        self.token.color = .cyan;
                         state = .number;
                     },
                     else => {
@@ -178,7 +178,7 @@ pub const SyntaxIterator = struct {
         if (self.index == self.src.len) return null;
 
         self.token = Token{
-            .color = .Reset,
+            .color = .default,
             .start = self.index,
             .end = undefined,
         };

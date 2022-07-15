@@ -11,6 +11,7 @@ const outWriter = stdout.writer();
 const inReader = stdin.reader();
 
 const max_file_size = math.pow(usize, 1024, 4) * 1; // 1TB
+const line_space_len = 5;
 const help_output =
     \\Usage: blo [OPTION]... [FILE]...
     \\With no FILE, reads standard input.
@@ -52,7 +53,8 @@ pub const Blo = struct {
         };
     }
 
-    // count number length
+    /// count integer length
+    /// `12 -> 2` `5 -> 1` `555 -> 3`
     fn digitLen(n: usize) usize {
         if (n < 10) return 1;
         return 1 + digitLen(n / 10);
@@ -72,8 +74,13 @@ pub const Blo = struct {
         } else return value;
     }
 
-    pub fn echoStdin(self: Blo) void {
-        _ = self;
+    pub fn echoStdin(self: Blo) !void {
+        while (true) {
+            if (try inReader.readUntilDelimiterOrEofAlloc(self.allocator, '\n', max_file_size)) |line| {
+                _ = try outWriter.write(line);
+                _ = try outWriter.write("\n");
+            } else break;
+        }
     }
 
     fn fillSlice(slice: []u8, value: []const u8) void {
@@ -84,9 +91,14 @@ pub const Blo = struct {
     }
 
     pub fn printFile(self: Blo, path: []const u8) !void {
-        // reading file
         const file = try fs.cwd().openFile(path, .{});
-        // const data = try file.readToEndAlloc(self.allocator, max_file_size);
+        const data = try file.readToEndAlloc(self.allocator, max_file_size);
+
+        // space that caused by line numbers
+        const line_space = if (self.config.line_number)
+            " " ** line_space_len
+        else
+            "";
 
         // writing file information (header)
         if (self.config.info) {
@@ -96,12 +108,6 @@ pub const Blo = struct {
             var size_buf_stream = std.io.fixedBufferStream(@as(*[6]u8, undefined));
             try std.fmt.fmtIntSizeBin(stat.size).format("", .{}, size_buf_stream.writer());
             const size = size_buf_stream.getWritten();
-
-            // space that caused by line numbers
-            const space = if (self.config.line_number)
-                " " ** 5
-            else
-                "";
 
             if (self.config.ascii_chars) {
                 // ASCII Header
@@ -119,15 +125,15 @@ pub const Blo = struct {
                     \\{s}{s}
                     \\
                 , .{
-                    space,
+                    line_space,
                     term.Color.gray.toCode(),
                     horiz_border,
 
-                    space,
+                    line_space,
                     self.withColor(path, .bright_magenta, .gray),
                     self.withColor(size, .green, .gray),
 
-                    space,
+                    line_space,
                     horiz_border,
                 });
             } else {
@@ -151,14 +157,14 @@ pub const Blo = struct {
                     \\{s}{s}{s}┴{s}┘
                     \\
                 , .{
-                    space,
+                    line_space,
                     term.Color.gray.toCode(),
                     path_width,
                     size_width,
-                    space,
+                    line_space,
                     self.withColor(path, .bright_magenta, .gray),
                     self.withColor(size, .green, .gray),
-                    space,
+                    line_space,
                     left_bottom_corner,
                     path_width,
                     size_width,
@@ -167,56 +173,58 @@ pub const Blo = struct {
         }
 
         // check for line numbers
-        // if (self.config.line_number) {
-        //     var line_num: usize = 1;
-        //     if (self.config.highlight) {
-        //         var syntax_iterator = syntax.SyntaxIterator.init(.json, null, data);
-        //         const line_split_char = if (self.config.ascii_chars) "|" else "│";
-        //         var i: usize = 0;
-        //         while (syntax_iterator.next()) |token| : (i += 1) {
-        //             const lnl = digitLen(line_num); // line number length
-        //             if (i == 0) {
-        //                 try outWriter.writeByteNTimes(' ', 4 - lnl);
-        //                 try outWriter.print("{s}{d}{s} {s} ", .{ Color.Cyan.toCode(), line_num, Color.Reset.toCode(), self.withColor(line_split_char, .Gray, null) });
-        //                 try outWriter.writeAll(token.color.toCode());
-        //                 try outWriter.writeAll(data[token.start..token.end]);
-        //             } else if (data[token.start..token.end][0] == '\n') {
-        //                 line_num += 1;
-        //                 try outWriter.writeByte('\n');
-        //                 try outWriter.writeByteNTimes(' ', 4 - lnl);
-        //                 try outWriter.print("{s}{d}{s} {s} ", .{ Color.Cyan.toCode(), line_num, Color.Reset.toCode(), self.withColor(line_split_char, .Gray, null) });
-        //             } else {
-        //                 try outWriter.writeAll(token.color.toCode());
-        //                 try outWriter.writeAll(data[token.start..token.end]);
-        //             }
-        //         }
-        //     } else {
-        //         var lines = mem.split(u8, data, "\n");
-        //         const line_split_char = if (self.config.ascii_chars) "|" else "│";
-        //         while (lines.next()) |line| : (line_num += 1) {
-        //             const lnl = digitLen(line_num); // line number length
-        //             try outWriter.writeByteNTimes(' ', 4 - lnl);
-        //             try outWriter.print("{s}{d}{s} {s} ", .{ Color.Cyan.toCode(), line_num, Color.Reset.toCode(), self.setColor(line_split_char, .Gray, null) });
-        //             try outWriter.writeAll(line);
-        //             if (lines.index != null) try outWriter.writeByte('\n');
-        //         }
-        //     }
-        // } else {
-        //     if (self.config.highlight) {
-        //         var syntax_iterator = syntax.SyntaxIterator.init(.json, null, data);
-        //         while (syntax_iterator.next()) |token| {
-        //             try outWriter.writeAll(token.color.toCode());
-        //             try outWriter.writeAll(data[token.start..token.end]);
-        //         }
-        //     } else {
-        //         try outWriter.writeAll(data);
-        //     }
-        // }
+        if (self.config.line_number) {
+            const line_split_char = if (self.config.ascii_chars) "|" else "│";
+            var line_num: usize = 1;
+
+            if (self.config.highlight) {
+                var syntax_iterator = syntax.SyntaxIterator.init(.json, null, data);
+
+                var i: usize = 0;
+                while (syntax_iterator.next()) |token| : (i += 1) {
+                    const line_number_length = digitLen(line_num); // line number length
+                    if (i == 0) {
+                        try outWriter.writeByteNTimes(' ', 4 - line_number_length);
+                        try outWriter.print("{s}{d} {s} ", .{ term.Color.cyan.toCode(), line_num, self.withColor(line_split_char, .gray, token.color) });
+                        _ = try outWriter.write(data[token.start..token.end]);
+                    } else if (data[token.start..token.end][0] == '\n') {
+                        line_num += 1;
+                        try outWriter.writeByte('\n');
+                        try outWriter.writeByteNTimes(' ', 4 - line_number_length);
+                        try outWriter.print("{s}{d} {s} ", .{ term.Color.cyan.toCode(), line_num, self.withColor(line_split_char, .gray, token.color) });
+                    } else {
+                        _ = try outWriter.write(token.color.toCode());
+                        _ = try outWriter.write(data[token.start..token.end]);
+                    }
+                }
+            } else {
+                var lines = mem.split(u8, data, "\n");
+                while (lines.next()) |line| : (line_num += 1) {
+                    const line_number_length = digitLen(line_num); // line number length
+                    try outWriter.writeByteNTimes(' ', line_number_length - 1);
+                    try outWriter.print("{s}{d} {s} ", .{ term.Color.cyan.toCode(), line_num, self.withColor(line_split_char, .gray, .default) });
+                    _ = try outWriter.write(line);
+                    if (lines.index != null) try outWriter.writeByte('\n');
+                }
+            }
+        } else {
+            if (self.config.highlight) {
+                var syntax_iterator = syntax.SyntaxIterator.init(.json, null, data);
+                while (syntax_iterator.next()) |token| {
+                    _ = try outWriter.write(token.color.toCode());
+                    _ = try outWriter.write(data[token.start..token.end]);
+                }
+            } else {
+                _ = try outWriter.write(data);
+            }
+        }
 
         // show file end with <end>
         if (self.config.show_end) {
-            try outWriter.writeAll("<end>");
+            _ = try outWriter.write("<end>");
         }
+
+        _ = try outWriter.write("\n");
     }
 };
 
@@ -239,6 +247,11 @@ pub fn main() !void {
         .line_number = false,
         .info = false,
     };
+
+    if (!stdout.supportsAnsiEscapeCodes()) {
+        config.ascii_chars = true;
+        config.colors = false;
+    }
 
     for (args[1..]) |arg| {
         if (arg.len > 1 and arg[0] == '-') {
@@ -263,20 +276,10 @@ pub fn main() !void {
         }
     }
 
+    const blo = Blo.init(allocator, config);
     if (files.items.len == 0) {
-        while (true) {
-            var buf: [1024]u8 = undefined;
-            if (try inReader.readUntilDelimiterOrEof(&buf, '\n')) |line| {
-                try outWriter.print("{s}\n", .{line});
-            } else break;
-        }
+        try blo.echoStdin();
     } else {
-        if (!stdout.supportsAnsiEscapeCodes()) {
-            config.ascii_chars = true;
-            config.colors = false;
-        }
-        const blo = Blo.init(allocator, config);
-
         for (files.items) |file, index| {
             try blo.printFile(file);
             if (index < files.items.len - 1) {
