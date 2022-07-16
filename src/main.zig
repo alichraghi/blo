@@ -11,7 +11,7 @@ const outWriter = stdout.writer();
 const inReader = stdin.reader();
 
 const max_file_size = math.pow(usize, 1024, 4) * 1; // 1TB
-const line_space_len = 5;
+const line_space_len = 4;
 const help_output =
     \\Usage: blo [OPTION]... [FILE]...
     \\With no FILE, reads standard input.
@@ -34,7 +34,6 @@ pub const Error = error{
 };
 
 pub const Config = struct {
-    highlight: bool,
     ascii_chars: bool,
     info: bool,
     colors: bool,
@@ -96,7 +95,7 @@ pub const Blo = struct {
 
         // space that caused by line numbers
         const line_space = if (self.config.line_number)
-            " " ** line_space_len
+            " " ** (line_space_len + 1)
         else
             "";
 
@@ -120,14 +119,13 @@ pub const Blo = struct {
 
                 // print
                 try outWriter.print(
-                    \\{s}{s}{s}
+                    \\{s}{s}
                     \\{s}-- {s} -- {s} --
                     \\{s}{s}
                     \\
                 , .{
                     line_space,
-                    term.Color.gray.toCode(),
-                    horiz_border,
+                    self.withColor(horiz_border, .gray, null),
 
                     line_space,
                     self.withColor(path, .bright_magenta, .gray),
@@ -152,13 +150,12 @@ pub const Blo = struct {
                 const left_bottom_corner = if (self.config.line_number) "├" else "└";
 
                 try outWriter.print(
-                    \\{s}{s}┌{s}┬{s}┐
+                    \\{s}┌{s}┬{s}┐
                     \\{s}│ {s} │ {s} │
                     \\{s}{s}{s}┴{s}┘
                     \\
                 , .{
-                    line_space,
-                    term.Color.gray.toCode(),
+                    self.withColor(line_space, .gray, null),
                     path_width,
                     size_width,
                     line_space,
@@ -172,58 +169,58 @@ pub const Blo = struct {
             }
         }
 
-        // check for line numbers
+        const line_split_char = if (self.config.ascii_chars) "|" else "│";
+        var line_num: usize = 2;
+        var line_num_buf: [line_space_len]u8 = undefined;
+
         if (self.config.line_number) {
-            const line_split_char = if (self.config.ascii_chars) "|" else "│";
-            var line_num: usize = 1;
+            // first line
+            try outWriter.print("{s} {s} ", .{
+                self.withColor(" " ** (line_space_len - 1) ++ "1", .cyan, .gray),
+                line_split_char,
+            });
+        }
 
-            if (self.config.highlight) {
-                var syntax_iterator = syntax.SyntaxIterator.init(.json, null, data);
+        var syntax_iterator = syntax.SyntaxIterator.init(.json, data, null);
 
-                var i: usize = 0;
-                while (syntax_iterator.next()) |token| : (i += 1) {
-                    const line_number_length = digitLen(line_num); // line number length
-                    if (i == 0) {
-                        try outWriter.writeByteNTimes(' ', 4 - line_number_length);
-                        try outWriter.print("{s}{d} {s} ", .{ term.Color.cyan.toCode(), line_num, self.withColor(line_split_char, .gray, token.color) });
-                        _ = try outWriter.write(data[token.start..token.end]);
-                    } else if (data[token.start..token.end][0] == '\n') {
-                        line_num += 1;
-                        try outWriter.writeByte('\n');
-                        try outWriter.writeByteNTimes(' ', 4 - line_number_length);
-                        try outWriter.print("{s}{d} {s} ", .{ term.Color.cyan.toCode(), line_num, self.withColor(line_split_char, .gray, token.color) });
-                    } else {
-                        _ = try outWriter.write(token.color.toCode());
-                        _ = try outWriter.write(data[token.start..token.end]);
-                    }
+        var i: usize = 0;
+        while (syntax_iterator.next()) |token| : (i += 1) {
+            if (data[token.start..token.end][0] == '\n') {
+                if (self.config.line_number) {
+                    try outWriter.print("\n{s} {s} ", .{
+                        self.withColor(
+                            std.fmt.bufPrintIntToSlice(
+                                &line_num_buf,
+                                line_num,
+                                10,
+                                .lower,
+                                .{ .width = line_space_len },
+                            ),
+                            .cyan,
+                            .gray,
+                        ),
+                        line_split_char,
+                    });
+
+                    line_num += 1;
+                } else {
+                    _ = try outWriter.write("\n");
                 }
             } else {
-                var lines = mem.split(u8, data, "\n");
-                while (lines.next()) |line| : (line_num += 1) {
-                    const line_number_length = digitLen(line_num); // line number length
-                    try outWriter.writeByteNTimes(' ', line_number_length - 1);
-                    try outWriter.print("{s}{d} {s} ", .{ term.Color.cyan.toCode(), line_num, self.withColor(line_split_char, .gray, .default) });
-                    _ = try outWriter.write(line);
-                    if (lines.index != null) try outWriter.writeByte('\n');
-                }
-            }
-        } else {
-            if (self.config.highlight) {
-                var syntax_iterator = syntax.SyntaxIterator.init(.json, null, data);
-                while (syntax_iterator.next()) |token| {
-                    _ = try outWriter.write(token.color.toCode());
-                    _ = try outWriter.write(data[token.start..token.end]);
-                }
-            } else {
-                _ = try outWriter.write(data);
+                _ = try outWriter.write(try self.withColor(data[token.start..token.end], token.color, null));
             }
         }
 
-        // show file end with <end>
+        // show EOF with `⏎` or `<END>`
         if (self.config.show_end) {
-            _ = try outWriter.write("<end>");
+            if (self.config.ascii_chars)
+                _ = try outWriter.write(try self.withColor("<END>", .gray, null))
+            else
+                _ = try outWriter.write(try self.withColor("⏎", .gray, null));
         }
 
+        // clean up
+        _ = try outWriter.write(term.Sgr.reset.toCode());
         _ = try outWriter.write("\n");
     }
 };
@@ -240,7 +237,6 @@ pub fn main() !void {
     }
 
     var config = Config{
-        .highlight = true,
         .ascii_chars = false,
         .colors = true,
         .show_end = false,

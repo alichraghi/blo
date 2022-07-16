@@ -42,7 +42,7 @@ pub const SyntaxIterator = struct {
     index: usize,
     token: Token,
 
-    pub fn init(lang: Language, theme: ?Theme, src: []const u8) SyntaxIterator {
+    pub fn init(lang: Language, src: []const u8, theme: ?Theme) SyntaxIterator {
         return SyntaxIterator{
             .lang = lang,
             .theme = theme orelse default_theme,
